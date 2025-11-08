@@ -1,0 +1,569 @@
+{
+	"info": {
+		"_postman_id": "billing-service-collection",
+		"name": "Billing Service API",
+		"description": "Complete API collection for Billing Service microservice - Generate bills, compute taxes, handle cancellations and refunds",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "billing-service"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"health"
+							]
+						},
+						"description": "Check if the Billing Service is running and healthy."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Billing Events",
+			"item": [
+				{
+					"name": "Process Billing Event - Appointment Completed",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200 or 201\", function () {",
+									"    pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+									"});",
+									"",
+									"pm.test(\"Response has billId\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('billId');",
+									"});",
+									"",
+									"// Save bill ID for other requests",
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"bill_id\", jsonData.billId);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"eventType\": \"APPOINTMENT_COMPLETED\",\n  \"appointmentId\": 1,\n  \"patientId\": 1,\n  \"doctorId\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/billing-events",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"billing-events"
+							]
+						},
+						"description": "Process billing event when appointment is completed. Generates a bill with consultation fee (₹500), estimated medication fee (₹200), and tax (5%)."
+					},
+					"response": []
+				},
+				{
+					"name": "Process Billing Event - Appointment Cancelled",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"eventType\": \"APPOINTMENT_CANCELLED\",\n  \"appointmentId\": 1,\n  \"patientId\": 1,\n  \"doctorId\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/billing-events",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"billing-events"
+							]
+						},
+						"description": "Process billing event when appointment is cancelled. Calculates cancellation fee based on timing (>2h = full refund, ≤2h = 50% fee)."
+					},
+					"response": []
+				},
+				{
+					"name": "Process Billing Event - No Show",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"eventType\": \"APPOINTMENT_NO_SHOW\",\n  \"appointmentId\": 1,\n  \"patientId\": 1,\n  \"doctorId\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/billing-events",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"billing-events"
+							]
+						},
+						"description": "Process billing event when patient no-shows. Charges full consultation fee."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Get Bill",
+			"item": [
+				{
+					"name": "Get Bill by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains bill data\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('billId');",
+									"    pm.expect(jsonData).to.have.property('patientId');",
+									"    pm.expect(jsonData).to.have.property('totalAmount');",
+									"    pm.expect(jsonData).to.have.property('status');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/bills/{{bill_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"bills",
+								"{{bill_id}}"
+							]
+						},
+						"description": "Retrieve a bill by its ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Bill - Not Found (Error)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/bills/99999",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"bills",
+								"99999"
+							]
+						},
+						"description": "Example of error response when bill is not found."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "List Bills",
+			"item": [
+				{
+					"name": "Get All Bills (Paginated)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has content array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('content');",
+									"    pm.expect(jsonData).to.have.property('totalElements');",
+									"    pm.expect(jsonData).to.have.property('totalPages');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/bills?page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"bills"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (1-based)"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Records per page"
+								}
+							]
+						},
+						"description": "List all bills with pagination."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Bills by Patient",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"All bills belong to patient\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    var content = jsonData.content || [];",
+									"    content.forEach(function(bill) {",
+									"        pm.expect(bill.patientId).to.equal(parseInt(pm.collectionVariables.get('patient_id')));",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/bills/patient/{{patient_id}}?page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"bills",
+								"patient",
+								"{{patient_id}}"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							]
+						},
+						"description": "Get all bills for a specific patient with pagination."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Mark Bill as Paid",
+			"item": [
+				{
+					"name": "Mark Bill as Paid",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Bill status is PAID\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.status).to.equal('PAID');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/bills/{{bill_id}}/mark-paid",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"bills",
+								"{{bill_id}}",
+								"mark-paid"
+							]
+						},
+						"description": "Mark a bill as paid. Updates status from OPEN to PAID."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Process Refund",
+			"item": [
+				{
+					"name": "Process Refund",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Bill status is REFUNDED\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.status).to.equal('REFUNDED');",
+									"    pm.expect(jsonData).to.have.property('refundAmount');",
+									"    pm.expect(jsonData).to.have.property('refundReason');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refundAmount\": 250.00,\n  \"reason\": \"Cancellation within 2 hours\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/bills/{{bill_id}}/refund",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"bills",
+								"{{bill_id}}",
+								"refund"
+							]
+						},
+						"description": "Process a refund for a bill. Updates status to REFUNDED and records refund amount and reason."
+					},
+					"response": []
+				},
+				{
+					"name": "Process Refund - Exceeds Amount (Error)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refundAmount\": 10000.00,\n  \"reason\": \"Test refund exceeding bill amount\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/bills/{{bill_id}}/refund",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"bills",
+								"{{bill_id}}",
+								"refund"
+							]
+						},
+						"description": "Example: Refund amount exceeding bill total. Should return validation error."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Void Bill",
+			"item": [
+				{
+					"name": "Void Bill",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Bill status is VOID\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.status).to.equal('VOID');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/bills/{{bill_id}}/void",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"bills",
+								"{{bill_id}}",
+								"void"
+							]
+						},
+						"description": "Void a bill. Updates status to VOID."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8004",
+			"type": "string"
+		},
+		{
+			"key": "bill_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "patient_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "appointment_id",
+			"value": "1",
+			"type": "string"
+		}
+	]
+}
+
+

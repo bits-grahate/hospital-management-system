@@ -1,0 +1,528 @@
+{
+	"info": {
+		"_postman_id": "patient-service-collection",
+		"name": "Patient Service API",
+		"description": "Complete API collection for Patient Service microservice with PII masking documentation",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "patient-service"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"health"
+							]
+						},
+						"description": "Check if the Patient Service is running and healthy."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Create Patient",
+			"item": [
+				{
+					"name": "Create Patient",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has patientId\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('patientId');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"5551234567\",\n  \"dob\": \"1990-01-15\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/patients",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"patients"
+							]
+						},
+						"description": "Create a new patient. Email must be unique.\n\n**Note:** PII masking is automatically applied in logs:\n- Email: `jo***@example.com`\n- Phone: `55***67`"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Patient - Duplicate Email (Error)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"5559876543\",\n  \"dob\": \"1992-05-20\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/patients",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"patients"
+							]
+						},
+						"description": "Example of error response when email already exists."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Get Patient",
+			"item": [
+				{
+					"name": "Get Patient by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains patient data\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('patientId');",
+									"    pm.expect(jsonData).to.have.property('name');",
+									"    pm.expect(jsonData).to.have.property('email');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/patients/{{patient_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"patients",
+								"{{patient_id}}"
+							]
+						},
+						"description": "Retrieve a patient by their ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Patient - Not Found (Error)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/patients/99999",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"patients",
+								"99999"
+							]
+						},
+						"description": "Example of error response when patient is not found."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Search Patients",
+			"item": [
+				{
+					"name": "List All Patients (Paginated)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has pagination\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('data');",
+									"    pm.expect(jsonData).to.have.property('pagination');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/patients?page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"patients"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (1-based)"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Records per page"
+								}
+							]
+						},
+						"description": "List all patients with pagination. Default page=1, limit=20."
+					},
+					"response": []
+				},
+				{
+					"name": "Search by Name",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/patients?name=John&page=1&limit=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"patients"
+							],
+							"query": [
+								{
+									"key": "name",
+									"value": "John",
+									"description": "Search by name (case-insensitive, partial match)"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Search patients by name. Case-insensitive partial match.\n\n**Note:** Phone numbers in logs are masked: `555***`"
+					},
+					"response": []
+				},
+				{
+					"name": "Search by Phone",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/patients?phone=555&page=1&limit=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"patients"
+							],
+							"query": [
+								{
+									"key": "phone",
+									"value": "555",
+									"description": "Search by phone (partial match)"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Search patients by phone number. Partial match.\n\n**Note:** Phone numbers in logs are masked: `555***`"
+					},
+					"response": []
+				},
+				{
+					"name": "Search by Name and Phone",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/patients?name=John&phone=555&page=1&limit=10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"patients"
+							],
+							"query": [
+								{
+									"key": "name",
+									"value": "John"
+								},
+								{
+									"key": "phone",
+									"value": "555"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						},
+						"description": "Combined search by both name and phone number."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Update Patient",
+			"item": [
+				{
+					"name": "Update Patient",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Patient updated\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.name).to.equal('John Doe Updated');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"John Doe Updated\",\n  \"email\": \"john.doe@example.com\",\n  \"phone\": \"5559876543\",\n  \"dob\": \"1990-01-15\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/patients/{{patient_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"patients",
+								"{{patient_id}}"
+							]
+						},
+						"description": "Update an existing patient record. All fields must be provided."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Delete Patient",
+			"item": [
+				{
+					"name": "Delete Patient (Hard Delete)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									"",
+									"pm.test(\"Response body is empty\", function () {",
+									"    pm.response.to.be.empty;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/patients/{{patient_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"patients",
+								"{{patient_id}}"
+							]
+						},
+						"description": "**HARD DELETE** - Permanently remove a patient from the database.\n\n⚠️ **Warning:** This operation cannot be undone. The patient record will be completely removed from the database.\n\n**Note:** All PII in logs is masked. This includes correlation IDs for request tracking."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Patient - Not Found (Error)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/patients/99999",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"patients",
+								"99999"
+							]
+						},
+						"description": "Example of error response when trying to delete a non-existent patient."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "PII Masking Examples",
+			"item": [
+				{
+					"name": "PII Masking Documentation",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"health"
+							]
+						},
+						"description": "## PII Masking in Patient Service Logs\n\n### Email Masking\n- **Format**: First 2 characters + `***@` + domain\n- **Example**: `john.doe@example.com` → `jo***@example.com`\n- **Short emails**: `a@test.com` → `***@test.com`\n\n### Phone Masking\n- **Format**: First 2 characters + `***` + last 2 characters\n- **Example**: `5551234567` → `55***67`\n- **Short phones**: `1234` → `***` (if length ≤ 4)\n\n### Implementation\n- Automatic masking in all log statements\n- Applied via `maskPII()` method in `PatientService`\n- Used in create, search, and other operations\n\n### Example Log Output\n**Before Masking:**\n```\nCreating patient - john.doe@example.com, Phone: 5551234567\n```\n\n**After Masking:**\n```\nCreating patient - jo***@example.com, Phone: 55***67\n```\n\n### Benefits\n1. **Security Compliance**: Protects sensitive data in logs\n2. **Audit Trail**: Maintains request tracking without exposing PII\n3. **Debugging**: Still provides enough information for troubleshooting\n4. **GDPR/HIPAA Compliance**: Helps meet regulatory requirements"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8001",
+			"type": "string"
+		},
+		{
+			"key": "patient_id",
+			"value": "1",
+			"type": "string"
+		}
+	]
+}
+

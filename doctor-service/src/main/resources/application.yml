@@ -1,0 +1,43 @@
+server:
+  port: ${PORT:8002}
+
+spring:
+  application:
+    name: doctor-service
+  datasource:
+    url: jdbc:${DATABASE_URL:h2:mem:doctordb}
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+logging:
+  pattern:
+    console: '{"timestamp": "%d{yyyy-MM-dd HH:mm:ss}", "level": "%level", "correlationId": "%X{correlationId}", "path": "%logger{36}", "message": "%msg"}'
+
+# Doctor scheduling configuration
+doctor:
+  scheduling:
+    daily-cap: ${DOCTOR_DAILY_CAP:20}  # Max appointments per day per doctor
+
+# OpenAPI/Swagger configuration
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+

@@ -1,0 +1,116 @@
+services:
+  patient-service:
+    build:
+      context: ./patient-service
+      dockerfile: Dockerfile
+    container_name: patient-service
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+      - DATABASE_URL=h2:mem:patientdb
+    networks:
+      - hospital-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  doctor-service:
+    build:
+      context: ./doctor-service
+      dockerfile: Dockerfile
+    container_name: doctor-service
+    ports:
+      - "8002:8002"
+    environment:
+      - PORT=8002
+      - DATABASE_URL=h2:mem:doctordb
+      - PATIENT_SERVICE_URL=http://patient-service:8001
+      - DOCTOR_DAILY_CAP=20
+    networks:
+      - hospital-network
+    depends_on:
+      - patient-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  appointment-service:
+    build:
+      context: ./appointment-service
+      dockerfile: Dockerfile
+    container_name: appointment-service
+    ports:
+      - "8003:8003"
+    environment:
+      - PORT=8003
+      - DATABASE_URL=h2:mem:appointmentdb
+      - PATIENT_SERVICE_URL=http://patient-service:8001
+      - DOCTOR_SERVICE_URL=http://doctor-service:8002
+      - BILLING_SERVICE_URL=http://billing-service:8004
+    networks:
+      - hospital-network
+    depends_on:
+      - patient-service
+      - doctor-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  billing-service:
+    build:
+      context: ./billing-service
+      dockerfile: Dockerfile
+    container_name: billing-service
+    ports:
+      - "8004:8004"
+    environment:
+      - PORT=8004
+      - DATABASE_URL=h2:mem:billingdb
+      - PATIENT_SERVICE_URL=http://patient-service:8001
+      - APPOINTMENT_SERVICE_URL=http://appointment-service:8003
+    networks:
+      - hospital-network
+    depends_on:
+      - patient-service
+      - appointment-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "3000:80"
+    networks:
+      - hospital-network
+    depends_on:
+      - patient-service
+      - doctor-service
+      - appointment-service
+      - billing-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  hospital-network:
+    driver: bridge

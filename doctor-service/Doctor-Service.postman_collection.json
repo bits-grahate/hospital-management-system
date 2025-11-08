@@ -1,0 +1,759 @@
+{
+	"info": {
+		"_postman_id": "doctor-service-collection",
+		"name": "Doctor Service API",
+		"description": "Complete API collection for Doctor Service microservice with filtering and slot availability checks",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "doctor-service"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"health"
+							]
+						},
+						"description": "Check if the Doctor Service is running and healthy."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Create Doctor",
+			"item": [
+				{
+					"name": "Create Doctor",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has doctorId\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('doctorId');",
+									"});",
+									"",
+									"// Save doctor ID for other requests",
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"doctor_id\", jsonData.doctorId);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Dr. John Smith\",\n  \"email\": \"john.smith@hospital.com\",\n  \"phone\": \"5551234567\",\n  \"department\": \"Cardiology\",\n  \"specialization\": \"Heart Specialist\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/doctors",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"doctors"
+							]
+						},
+						"description": "Create a new doctor. Email must be unique. All fields are required."
+					},
+					"response": []
+				},
+				{
+					"name": "Create Doctor - Duplicate Email (Error)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Dr. Jane Smith\",\n  \"email\": \"john.smith@hospital.com\",\n  \"phone\": \"5559876543\",\n  \"department\": \"Neurology\",\n  \"specialization\": \"Brain Specialist\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/doctors",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"doctors"
+							]
+						},
+						"description": "Example of error response when email already exists."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Get Doctor",
+			"item": [
+				{
+					"name": "Get Doctor by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains doctor data\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('doctorId');",
+									"    pm.expect(jsonData).to.have.property('name');",
+									"    pm.expect(jsonData).to.have.property('email');",
+									"    pm.expect(jsonData).to.have.property('department');",
+									"    pm.expect(jsonData).to.have.property('specialization');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/doctors/{{doctor_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"doctors",
+								"{{doctor_id}}"
+							]
+						},
+						"description": "Retrieve a doctor by their ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Doctor - Not Found (Error)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/doctors/99999",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"doctors",
+								"99999"
+							]
+						},
+						"description": "Example of error response when doctor is not found."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "List Doctors",
+			"item": [
+				{
+					"name": "List All Doctors (Paginated)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has content array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('content');",
+									"    pm.expect(jsonData).to.have.property('totalElements');",
+									"    pm.expect(jsonData).to.have.property('totalPages');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/doctors?page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"doctors"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (1-based)"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Records per page"
+								}
+							]
+						},
+						"description": "List all doctors with pagination. Default page=1, limit=20.\n\n**Note:** `page=0` is automatically converted to `page=1`. `limit` parameter takes precedence over `size`."
+					},
+					"response": []
+				},
+				{
+					"name": "List Doctors - Large Page Size",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/doctors?page=1&limit=100",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"doctors"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "100",
+									"description": "Get 100 records per page"
+								}
+							]
+						},
+						"description": "List all doctors with large page size (100 records)."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Filter Doctors",
+			"item": [
+				{
+					"name": "Filter by Department",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"All doctors belong to Cardiology\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    var content = jsonData.content || [];",
+									"    content.forEach(function(doctor) {",
+									"        pm.expect(doctor.department).to.equal('Cardiology');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/doctors?department=Cardiology&page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"doctors"
+							],
+							"query": [
+								{
+									"key": "department",
+									"value": "Cardiology",
+									"description": "Filter by department name (exact match, case-sensitive)"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							]
+						},
+						"description": "Filter doctors by department. Only active doctors are returned."
+					},
+					"response": []
+				},
+				{
+					"name": "Filter by Specialization",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"All doctors have Heart Specialist specialization\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    var content = jsonData.content || [];",
+									"    content.forEach(function(doctor) {",
+									"        pm.expect(doctor.specialization).to.equal('Heart Specialist');",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/doctors?specialization=Heart Specialist&page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"doctors"
+							],
+							"query": [
+								{
+									"key": "specialization",
+									"value": "Heart Specialist",
+									"description": "Filter by specialization (exact match, case-sensitive)"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							]
+						},
+						"description": "Filter doctors by specialization. Only active doctors are returned.\n\n**Note:** Specialization names may contain spaces (e.g., \"Heart Specialist\")."
+					},
+					"response": []
+				},
+				{
+					"name": "Filter by Department and Specialization",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/doctors?department=Cardiology&specialization=Heart Specialist&page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"doctors"
+							],
+							"query": [
+								{
+									"key": "department",
+									"value": "Cardiology"
+								},
+								{
+									"key": "specialization",
+									"value": "Heart Specialist"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							]
+						},
+						"description": "Combined filter by both department and specialization. Returns doctors matching BOTH criteria."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Departments & Specializations",
+			"item": [
+				{
+					"name": "List All Departments",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/departments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"departments"
+							]
+						},
+						"description": "Get all unique department names from active doctors.\n\nReturns a simple array of department names (strings)."
+					},
+					"response": []
+				},
+				{
+					"name": "List All Specializations",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/specializations",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"specializations"
+							]
+						},
+						"description": "Get all unique specialization names from active doctors.\n\nReturns a simple array of specialization names (strings).\n\n**Note:** Specialization names may contain spaces (e.g., \"Heart Specialist\", \"Mental Health Specialist\")."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Slot Availability",
+			"item": [
+				{
+					"name": "Check Slot Availability - Available",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has available field\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('available');",
+									"    pm.expect(jsonData).to.have.property('message');",
+									"});",
+									"",
+									"pm.test(\"Slot is available\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.available).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"slotStart\": \"2025-11-03T14:00:00Z\",\n  \"slotEnd\": \"2025-11-03T14:30:00Z\",\n  \"department\": \"Cardiology\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/doctors/{{doctor_id}}/check-availability",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"doctors",
+								"{{doctor_id}}",
+								"check-availability"
+							]
+						},
+						"description": "Check if a doctor is available for a specific time slot.\n\n**Validation Rules:**\n1. **Clinic Hours**: Slot must be between 9 AM and 6 PM\n2. **Lead Time**: Slot must be at least 2 hours from current time\n3. **Department Match**: If provided, doctor must belong to the specified department\n\n**Request Fields:**\n- `slotStart`: ISO 8601 timestamp (required)\n- `slotEnd`: ISO 8601 timestamp (required)\n- `department`: Department name (optional, for validation)\n\n**Response Fields:**\n- `available`: Boolean indicating availability\n- `message`: Human-readable message explaining the result"
+					},
+					"response": []
+				},
+				{
+					"name": "Check Slot Availability - Outside Clinic Hours",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"slotStart\": \"2025-11-03T20:00:00Z\",\n  \"slotEnd\": \"2025-11-03T20:30:00Z\",\n  \"department\": \"Cardiology\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/doctors/{{doctor_id}}/check-availability",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"doctors",
+								"{{doctor_id}}",
+								"check-availability"
+							]
+						},
+						"description": "Example: Slot outside clinic hours (after 6 PM). Should return `available: false` with message \"Outside clinic hours (9 AM - 6 PM)\"."
+					},
+					"response": []
+				},
+				{
+					"name": "Check Slot Availability - Too Soon (Lead Time)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"slotStart\": \"2025-11-02T10:00:00Z\",\n  \"slotEnd\": \"2025-11-02T10:30:00Z\",\n  \"department\": \"Cardiology\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/doctors/{{doctor_id}}/check-availability",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"doctors",
+								"{{doctor_id}}",
+								"check-availability"
+							]
+						},
+						"description": "Example: Slot less than 2 hours from now. Should return `available: false` with message \"Slot must be at least 2 hours from now\".\n\n**Note:** This will fail if run too far in the future. Update the timestamp to be ~1 hour from current time for testing."
+					},
+					"response": []
+				},
+				{
+					"name": "Check Slot Availability - Department Mismatch",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"slotStart\": \"2025-11-03T14:00:00Z\",\n  \"slotEnd\": \"2025-11-03T14:30:00Z\",\n  \"department\": \"Neurology\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/doctors/{{doctor_id}}/check-availability",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"doctors",
+								"{{doctor_id}}",
+								"check-availability"
+							]
+						},
+						"description": "Example: Doctor belongs to Cardiology but request specifies Neurology. Should return `available: false` with message \"Doctor belongs to Cardiology, not Neurology\"."
+					},
+					"response": []
+				},
+				{
+					"name": "Check Slot Availability - Doctor Not Found (Error)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"slotStart\": \"2025-11-03T14:00:00Z\",\n  \"slotEnd\": \"2025-11-03T14:30:00Z\",\n  \"department\": \"Cardiology\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/doctors/99999/check-availability",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"doctors",
+								"99999",
+								"check-availability"
+							]
+						},
+						"description": "Example of error response when doctor is not found."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8002",
+			"type": "string"
+		},
+		{
+			"key": "doctor_id",
+			"value": "1",
+			"type": "string"
+		}
+	]
+}
+
+

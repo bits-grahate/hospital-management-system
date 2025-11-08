@@ -1,0 +1,678 @@
+{
+	"info": {
+		"_postman_id": "appointment-service-collection",
+		"name": "Appointment Service API",
+		"description": "Complete API collection for Appointment Service microservice - Book, reschedule, cancel, complete appointments with constraints & slot collision checks",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "appointment-service"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/health",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"health"
+							]
+						},
+						"description": "Check if the Appointment Service is running and healthy."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Book Appointment",
+			"item": [
+				{
+					"name": "Book Appointment",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test(\"Response has appointmentId\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('appointmentId');",
+									"});",
+									"",
+									"// Save appointment ID for other requests",
+									"if (pm.response.code === 201) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"appointment_id\", jsonData.appointmentId);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"patientId\": 1,\n  \"doctorId\": 1,\n  \"slotStart\": \"2025-11-15T14:00:00\",\n  \"slotEnd\": \"2025-11-15T14:30:00\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/appointments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"appointments"
+							]
+						},
+						"description": "Book a new appointment. Validates patient, doctor, slot availability, clinic hours (9 AM - 6 PM), lead time (minimum 2 hours from now), and daily cap (max 20 appointments/day/doctor)."
+					},
+					"response": []
+				},
+				{
+					"name": "Book Appointment - Validation Error",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"patientId\": 1,\n  \"doctorId\": 1,\n  \"slotStart\": \"2025-11-15T20:00:00\",\n  \"slotEnd\": \"2025-11-15T20:30:00\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/appointments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"appointments"
+							]
+						},
+						"description": "Example: Slot outside clinic hours (after 6 PM). Should return validation error."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Get Appointment",
+			"item": [
+				{
+					"name": "Get Appointment by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response contains appointment data\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('appointmentId');",
+									"    pm.expect(jsonData).to.have.property('patientId');",
+									"    pm.expect(jsonData).to.have.property('doctorId');",
+									"    pm.expect(jsonData).to.have.property('status');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/appointments/{{appointment_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"appointments",
+								"{{appointment_id}}"
+							]
+						},
+						"description": "Retrieve an appointment by its ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Appointment - Not Found (Error)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/appointments/99999",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"appointments",
+								"99999"
+							]
+						},
+						"description": "Example of error response when appointment is not found."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "List Appointments",
+			"item": [
+				{
+					"name": "List All Appointments (Paginated)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has content array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('content');",
+									"    pm.expect(jsonData).to.have.property('totalElements');",
+									"    pm.expect(jsonData).to.have.property('totalPages');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/appointments?page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"appointments"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1",
+									"description": "Page number (1-based)"
+								},
+								{
+									"key": "limit",
+									"value": "20",
+									"description": "Records per page"
+								}
+							]
+						},
+						"description": "List all appointments with pagination."
+					},
+					"response": []
+				},
+				{
+					"name": "Filter by Patient",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/appointments?patientId=1&page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"appointments"
+							],
+							"query": [
+								{
+									"key": "patientId",
+									"value": "1"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							]
+						},
+						"description": "Filter appointments by patient ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Filter by Doctor",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/appointments?doctorId=1&page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"appointments"
+							],
+							"query": [
+								{
+									"key": "doctorId",
+									"value": "1"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							]
+						},
+						"description": "Filter appointments by doctor ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Filter by Status",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/appointments?status=SCHEDULED&page=1&limit=20",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"appointments"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "SCHEDULED",
+									"description": "Status: SCHEDULED, COMPLETED, CANCELLED, NO_SHOW"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							]
+						},
+						"description": "Filter appointments by status."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Reschedule Appointment",
+			"item": [
+				{
+					"name": "Reschedule Appointment",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has updated appointment\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('appointmentId');",
+									"    pm.expect(jsonData).to.have.property('rescheduleCount');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"newSlotStart\": \"2025-11-15T15:00:00\",\n  \"newSlotEnd\": \"2025-11-15T15:30:00\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/appointments/{{appointment_id}}/reschedule",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"appointments",
+								"{{appointment_id}}",
+								"reschedule"
+							]
+						},
+						"description": "Reschedule an appointment. Maximum 2 reschedules per appointment. Must be at least 1 hour before original appointment start. New slot must be at least 2 hours from now."
+					},
+					"response": []
+				},
+				{
+					"name": "Reschedule - Max Reschedules Reached",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"newSlotStart\": \"2025-11-15T16:00:00\",\n  \"newSlotEnd\": \"2025-11-15T16:30:00\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/v1/appointments/{{appointment_id}}/reschedule",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"appointments",
+								"{{appointment_id}}",
+								"reschedule"
+							]
+						},
+						"description": "Example: Attempting to reschedule after 2 reschedules already done. Should return error."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Cancel Appointment",
+			"item": [
+				{
+					"name": "Cancel Appointment",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Appointment status is CANCELLED\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.status).to.equal('CANCELLED');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/appointments/{{appointment_id}}/cancel",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"appointments",
+								"{{appointment_id}}",
+								"cancel"
+							]
+						},
+						"description": "Cancel an appointment. Must be at least 1 hour before appointment start. Notifies Billing Service for cancellation fee calculation."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Complete Appointment",
+			"item": [
+				{
+					"name": "Complete Appointment",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Appointment status is COMPLETED\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.status).to.equal('COMPLETED');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/appointments/{{appointment_id}}/complete",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"appointments",
+								"{{appointment_id}}",
+								"complete"
+							]
+						},
+						"description": "Mark an appointment as completed. Notifies Billing Service to generate bill."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Mark No-Show",
+			"item": [
+				{
+					"name": "Mark No-Show",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Appointment status is NO_SHOW\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.status).to.equal('NO_SHOW');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/appointments/{{appointment_id}}/no-show",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"appointments",
+								"{{appointment_id}}",
+								"no-show"
+							]
+						},
+						"description": "Mark an appointment as no-show. Notifies Billing Service for no-show fee calculation."
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Count Appointments",
+			"item": [
+				{
+					"name": "Count Appointments by Doctor and Date",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has count field\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('count');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/v1/appointments/doctor/1/count?date=2025-11-15T00:00:00",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"v1",
+								"appointments",
+								"doctor",
+								"1",
+								"count"
+							],
+							"query": [
+								{
+									"key": "date",
+									"value": "2025-11-15T00:00:00",
+									"description": "Date in ISO 8601 format"
+								}
+							]
+						},
+						"description": "Count appointments for a doctor on a specific date. Used for daily cap validation."
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:8003",
+			"type": "string"
+		},
+		{
+			"key": "appointment_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "patient_id",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "doctor_id",
+			"value": "1",
+			"type": "string"
+		}
+	]
+}
+
+
