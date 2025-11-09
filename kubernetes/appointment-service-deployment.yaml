@@ -17,6 +17,7 @@ spec:
       containers:
       - name: appointment-service
         image: appointment-service:latest
+        imagePullPolicy: Never
         ports:
         - containerPort: 8003
         env:
@@ -33,6 +34,8 @@ spec:
           value: "http://doctor-service:8002"
         - name: BILLING_SERVICE_URL
           value: "http://billing-service:8004"
+        - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+          value: "org.postgresql.Driver"
         resources:
           requests:
             memory: "512Mi"

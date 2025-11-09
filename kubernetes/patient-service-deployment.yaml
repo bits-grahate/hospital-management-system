@@ -17,6 +17,7 @@ spec:
       containers:
       - name: patient-service
         image: patient-service:latest
+        imagePullPolicy: Never
         ports:
         - containerPort: 8001
         env:
@@ -35,6 +36,8 @@ spec:
             secretKeyRef:
               name: patient-secret
               key: database-password
+        - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+          value: "org.postgresql.Driver"
         resources:
           requests:
             memory: "512Mi"

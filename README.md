@@ -627,20 +627,147 @@ kubectl get ingress
 
 **Screenshot Placeholder:** *[Screenshot: Kubernetes resources status]*
 
-#### Step 3.7: Access Services via Ingress
+#### Step 3.7: Start Minikube Tunnel (Required for Ingress on macOS)
+
+**Important:** On macOS, Minikube ingress requires `minikube tunnel` to be running. This must run in a separate terminal and stay active.
 
 ```bash
-# Get Minikube IP
-minikube ip
+# Start minikube tunnel (requires sudo password)
+sudo minikube tunnel
+```
 
-# Add to /etc/hosts
-echo "$(minikube ip) hospital.local" | sudo tee -a /etc/hosts
+**Keep this terminal running!** The tunnel must stay active for ingress to work.
 
-# Access frontend
+**Expected Output:**
+```
+✅  Tunnel successfully started
+📌  NOTE: Please do not close this terminal as this process must stay alive for the tunnel to be accessible ...
+❗  The service/ingress hospital-ingress requires privileged ports to be exposed: [80 443]
+🔑  sudo permission will be asked for it.
+🏃  Starting tunnel for service hospital-ingress./
+```
+
+#### Step 3.8: Configure /etc/hosts
+
+**Update `/etc/hosts` to point to localhost (required when using tunnel):**
+
+```bash
+# Update /etc/hosts to use 127.0.0.1 (tunnel binds to localhost)
+sudo sed -i '' 's/192.168.49.2 hospital.local/127.0.0.1 hospital.local/' /etc/hosts
+
+# Or manually edit with:
+sudo nano /etc/hosts
+# Change: 192.168.49.2 hospital.local
+# To:     127.0.0.1 hospital.local
+```
+
+**Verify the entry:**
+```bash
+grep hospital.local /etc/hosts
+# Should show: 127.0.0.1 hospital.local
+```
+
+#### Step 3.9: Access Services via Ingress
+
+**After tunnel is running and /etc/hosts is configured:**
+
+```bash
+# Test connection
+curl -I http://hospital.local
+
+# Access frontend in browser
 open http://hospital.local
 ```
 
-**Screenshot Placeholder:** *[Screenshot: Accessing services via Ingress]*
+**Service URLs:**
+- **Frontend**: http://hospital.local
+- **Patient Service**: http://hospital.local/v1/patients
+- **Doctor Service**: http://hospital.local/v1/doctors
+- **Appointment Service**: http://hospital.local/v1/appointments
+- **Billing Service**: http://hospital.local/v1/bills
+
+**Alternative: Port Forwarding (No sudo required)**
+
+If you prefer not to use `minikube tunnel`, you can use port forwarding:
+
+```bash
+# Port forward frontend to localhost:3000
+kubectl port-forward service/frontend 3000:80
+
+# Access at: http://localhost:3000
+```
+
+#### Step 3.10: Monitor Minikube Deployment
+
+**Check deployment status:**
+```bash
+# Check all pods
+kubectl get pods
+
+# Check deployments
+kubectl get deployments
+
+# Check services
+kubectl get services
+
+# Check ingress
+kubectl get ingress
+
+# Watch pods in real-time
+kubectl get pods -w
+```
+
+**View pod logs:**
+```bash
+# View logs for a specific pod
+kubectl logs <pod-name>
+
+# Follow logs (real-time)
+kubectl logs -f <pod-name>
+
+# View logs for a deployment
+kubectl logs -f deployment/patient-service
+```
+
+**Check pod status and events:**
+```bash
+# Describe a pod (detailed information)
+kubectl describe pod <pod-name>
+
+# Check events
+kubectl get events --sort-by='.lastTimestamp'
+
+# Check resource usage
+kubectl top pods
+kubectl top nodes
+```
+
+**Monitor Minikube status:**
+```bash
+# Check Minikube status
+minikube status
+
+# Check Minikube IP
+minikube ip
+
+# View Minikube dashboard (optional)
+minikube dashboard
+```
+
+**Troubleshooting commands:**
+```bash
+# Check if tunnel is running
+ps aux | grep "minikube tunnel" | grep -v grep
+
+# Check ingress controller logs
+kubectl logs -n ingress-nginx -l app.kubernetes.io/component=controller --tail=50
+
+# Check service endpoints
+kubectl get endpoints
+
+# Test service connectivity
+kubectl exec -it <pod-name> -- curl http://service-name:port
+```
 
 For detailed Kubernetes deployment instructions, see [Kubernetes README](./kubernetes/README.md).
 

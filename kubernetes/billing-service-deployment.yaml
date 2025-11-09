@@ -17,6 +17,7 @@ spec:
       containers:
       - name: billing-service
         image: billing-service:latest
+        imagePullPolicy: Never
         ports:
         - containerPort: 8004
         env:
@@ -29,6 +30,8 @@ spec:
               key: database-url
         - name: PATIENT_SERVICE_URL
           value: "http://patient-service:8001"
+        - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
+          value: "org.postgresql.Driver"
         resources:
           requests:
             memory: "512Mi"

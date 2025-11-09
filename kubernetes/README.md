@@ -234,9 +234,54 @@ kubectl apply -f ingress.yaml
 kubectl wait --for=condition=ready ingress/hospital-ingress --timeout=300s
 ```
 
+### Step 7: Start Minikube Tunnel (Required for Ingress on macOS)
+
+**Important:** On macOS, Minikube ingress requires `minikube tunnel` to be running. This must run in a separate terminal and stay active.
+
+```bash
+# Start minikube tunnel (requires sudo password)
+sudo minikube tunnel
+```
+
+**Keep this terminal running!** The tunnel must stay active for ingress to work.
+
+**Expected Output:**
+```
+✅  Tunnel successfully started
+📌  NOTE: Please do not close this terminal as this process must stay alive for the tunnel to be accessible ...
+❗  The service/ingress hospital-ingress requires privileged ports to be exposed: [80 443]
+🔑  sudo permission will be asked for it.
+🏃  Starting tunnel for service hospital-ingress./
+```
+
+**Note:** The tunnel binds to `127.0.0.1` (localhost), so `/etc/hosts` must point to `127.0.0.1`, not the Minikube IP.
+
 ---
 
-### Step 7: Verify Deployment
+### Step 8: Configure /etc/hosts
+
+**Update `/etc/hosts` to point to localhost (required when using tunnel):**
+
+```bash
+# Get Minikube IP (for reference)
+minikube ip
+
+# Update /etc/hosts to use 127.0.0.1 (tunnel binds to localhost)
+sudo sed -i '' 's/192.168.49.2 hospital.local/127.0.0.1 hospital.local/' /etc/hosts
+
+# Or manually edit with:
+sudo nano /etc/hosts
+# Change: 192.168.49.2 hospital.local
+# To:     127.0.0.1 hospital.local
+```
+
+**Verify the entry:**
+```bash
+grep hospital.local /etc/hosts
+# Should show: 127.0.0.1 hospital.local
+```
+
+### Step 9: Verify Deployment
 
 **Check all deployments:**
 ```bash
@@ -310,26 +355,33 @@ hospital-ingress  nginx   hospital.local   <minikube-ip>  80      2m
 
 ## 🌐 Accessing Services
 
-### Method 1: Using Ingress (Recommended)
+### Method 1: Using Ingress with Minikube Tunnel (Recommended for macOS)
 
-**Get Minikube IP:**
+**Prerequisites:**
+1. Minikube tunnel must be running: `sudo minikube tunnel`
+2. `/etc/hosts` must point to `127.0.0.1` (not Minikube IP)
+
+**Configure `/etc/hosts`:**
 ```bash
-minikube ip
-```
+# Update /etc/hosts to use 127.0.0.1 (tunnel binds to localhost)
+sudo sed -i '' 's/192.168.49.2 hospital.local/127.0.0.1 hospital.local/' /etc/hosts
 
-**Add to `/etc/hosts` (macOS/Linux):**
-```bash
-# Get Minikube IP
-MINIKUBE_IP=$(minikube ip)
-
-# Add to /etc/hosts (requires sudo)
-echo "$MINIKUBE_IP hospital.local" | sudo tee -a /etc/hosts
-```
-
-**Or edit `/etc/hosts` manually:**
-```bash
+# Or manually edit with:
 sudo nano /etc/hosts
-# Add line: <minikube-ip> hospital.local
+# Change: 192.168.49.2 hospital.local
+# To:     127.0.0.1 hospital.local
+```
+
+**Verify configuration:**
+```bash
+grep hospital.local /etc/hosts
+# Should show: 127.0.0.1 hospital.local
+```
+
+**Test connection:**
+```bash
+curl -I http://hospital.local
+# Should return: HTTP/1.1 200 OK
 ```
 
 **Access services:**
@@ -404,6 +456,156 @@ minikube service doctor-service --url
 minikube service appointment-service --url
 minikube service billing-service --url
 minikube service frontend --url
+```
+
+---
+
+## 📊 Monitoring Minikube Deployment
+
+### Check Deployment Status
+
+**Basic status checks:**
+```bash
+# Check all pods
+kubectl get pods
+
+# Check deployments
+kubectl get deployments
+
+# Check services
+kubectl get services
+
+# Check ingress
+kubectl get ingress
+
+# Watch pods in real-time
+kubectl get pods -w
+```
+
+**Detailed pod information:**
+```bash
+# Get pods with more details
+kubectl get pods -o wide
+
+# Describe a specific pod
+kubectl describe pod <pod-name>
+
+# Check pod events
+kubectl describe pod <pod-name> | grep -A 10 Events
+```
+
+### View Pod Logs
+
+**View logs:**
+```bash
+# View logs for a specific pod
+kubectl logs <pod-name>
+
+# Follow logs (real-time)
+kubectl logs -f <pod-name>
+
+# View logs for a deployment
+kubectl logs -f deployment/patient-service
+
+# View logs for all pods in a deployment
+kubectl logs -f -l app=patient-service
+```
+
+**View logs with timestamps:**
+```bash
+# View logs with timestamps
+kubectl logs <pod-name> --timestamps
+
+# View last N lines
+kubectl logs <pod-name> --tail=50
+
+# View logs from a specific time
+kubectl logs <pod-name> --since=10m
+```
+
+### Monitor Resource Usage
+
+**Check resource consumption:**
+```bash
+# Check pod resource usage
+kubectl top pods
+
+# Check node resource usage
+kubectl top nodes
+
+# Check resource usage for specific namespace
+kubectl top pods --all-namespaces
+```
+
+### Monitor Minikube Status
+
+**Check Minikube cluster status:**
+```bash
+# Check Minikube status
+minikube status
+
+# Check Minikube IP
+minikube ip
+
+# View Minikube dashboard (opens in browser)
+minikube dashboard
+
+# Check Minikube addons
+minikube addons list
+
+# Check if tunnel is running
+ps aux | grep "minikube tunnel" | grep -v grep
+```
+
+### Check Service Endpoints
+
+**Verify service connectivity:**
+```bash
+# Check service endpoints
+kubectl get endpoints
+
+# Check endpoints for a specific service
+kubectl get endpoints patient-service
+
+# Test service connectivity from a pod
+kubectl exec -it <pod-name> -- curl http://service-name:port
+
+# Test service health endpoint
+kubectl exec -it <pod-name> -- curl http://localhost:8001/v1/health
+```
+
+### Monitor Events
+
+**View cluster events:**
+```bash
+# View all events
+kubectl get events
+
+# View events sorted by time
+kubectl get events --sort-by='.lastTimestamp'
+
+# View events for a specific resource
+kubectl get events --field-selector involvedObject.name=<pod-name>
+
+# Watch events in real-time
+kubectl get events --watch
+```
+
+### Check Ingress Status
+
+**Monitor ingress:**
+```bash
+# Check ingress status
+kubectl get ingress
+
+# Describe ingress
+kubectl describe ingress hospital-ingress
+
+# Check ingress controller logs
+kubectl logs -n ingress-nginx -l app.kubernetes.io/component=controller --tail=50
+
+# Check ingress controller pods
+kubectl get pods -n ingress-nginx
 ```
 
 ---
@@ -677,32 +879,50 @@ kubectl create secret generic patient-secret \
 
 ## 📝 Quick Reference Commands
 
-### Deployment
+### Start Minikube and Deploy
 ```bash
-# Start Minikube
-minikube start
+# Start Minikube (with recommended resources)
+minikube start --memory=4096 --cpus=2
 
-# Enable ingress
+# Check Minikube status
+minikube status
+
+# Enable ingress addon
 minikube addons enable ingress
 
-# Configure Docker
+# Configure Docker for Minikube
 eval $(minikube docker-env)
 
-# Build images
+# Build all Docker images
 docker build -t patient-service:latest ./patient-service
 docker build -t doctor-service:latest ./doctor-service
 docker build -t appointment-service:latest ./appointment-service
 docker build -t billing-service:latest ./billing-service
 docker build -t frontend:latest ./frontend
 
-# Deploy
+# Deploy ConfigMaps, Secrets, and Databases
+cd kubernetes
 kubectl apply -f configmaps-secrets.yaml
+
+# Wait for databases to be ready
+kubectl wait --for=condition=ready pod -l app=patient-db --timeout=300s
+kubectl wait --for=condition=ready pod -l app=doctor-db --timeout=300s
+kubectl wait --for=condition=ready pod -l app=appointment-db --timeout=300s
+kubectl wait --for=condition=ready pod -l app=billing-db --timeout=300s
+
+# Deploy services
 kubectl apply -f patient-service-deployment.yaml
 kubectl apply -f doctor-service-deployment.yaml
 kubectl apply -f appointment-service-deployment.yaml
 kubectl apply -f billing-service-deployment.yaml
 kubectl apply -f frontend-deployment.yaml
 kubectl apply -f ingress.yaml
+
+# Start Minikube tunnel (REQUIRED for ingress on macOS - keep running!)
+sudo minikube tunnel
+
+# Configure /etc/hosts (in another terminal)
+sudo sed -i '' 's/192.168.49.2 hospital.local/127.0.0.1 hospital.local/' /etc/hosts
 ```
 
 ### Status Checks
@@ -716,28 +936,71 @@ kubectl get services
 # Check pods
 kubectl get pods
 
+# Check pods with details
+kubectl get pods -o wide
+
 # Check ingress
 kubectl get ingress
+
+# Watch pods in real-time
+kubectl get pods -w
 ```
 
-### Access
+### Monitor and Debug
+```bash
+# View pod logs
+kubectl logs <pod-name>
+
+# Follow logs (real-time)
+kubectl logs -f <pod-name>
+
+# View logs for a deployment
+kubectl logs -f deployment/patient-service
+
+# Describe a pod (detailed info)
+kubectl describe pod <pod-name>
+
+# Check events
+kubectl get events --sort-by='.lastTimestamp'
+
+# Check resource usage
+kubectl top pods
+kubectl top nodes
+
+# Check Minikube status
+minikube status
+
+# Check if tunnel is running
+ps aux | grep "minikube tunnel" | grep -v grep
+```
+
+### Access Services
 ```bash
 # Get Minikube IP
 minikube ip
 
-# Port forward
-kubectl port-forward service/patient-service 8001:8001
+# Test connection
+curl -I http://hospital.local
+
+# Port forward (alternative to tunnel)
+kubectl port-forward service/frontend 3000:80
+
+# Access at: http://localhost:3000
 ```
 
 ### Cleanup
 ```bash
-# Delete all
+# Delete all Kubernetes resources
+cd kubernetes
 kubectl delete -f .
+
+# Stop Minikube tunnel (if running)
+pkill -f "minikube tunnel"
 
 # Stop Minikube
 minikube stop
 
-# Delete Minikube
+# Delete Minikube cluster
 minikube delete
 ```
 
